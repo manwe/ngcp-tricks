@@ -1,0 +1,118 @@
+#!/bin/bash
+
+DESTMAIL='manwe@sipdoc.net'
+MYACC='mysql accounting -N -s -r -e'
+MYKAM='mysql kamailio -N -s -r -e'
+
+
+INIMONTH=$(date -d 'last month' +%m)
+ENDMONTH=$(date  +%m)
+
+if [ $INIMONTH == "12" ]; then
+	INIYEAR=$(date -d 'last year' +%Y)
+else
+	INIYEAR=$(date  +%Y)
+fi
+ENDYEAR=$(date  +%Y)
+
+UNIXINITTIME=$(date +%s -d "$INIYEAR-$INIMONTH-01 00:00:00")
+UNIXENDTIME=$(date +%s -d "$ENDYEAR-$ENDMONTH-01 00:00:00")
+HOY=$(date +%Y-%m-%d)
+
+#*********************************************
+
+NUMSUBS=$( $MYKAM "select count(*) from subscriber" )
+
+NUMSUBSPERDOM=$( $MYKAM "select domain,count(*) from subscriber group by domain" )
+
+NUMDID=$( $MYKAM "select count(*) from dbaliases" )
+
+NUMDIDPERDOM=$( $MYKAM "select alias_domain,count(*) from dbaliases group by domain" )
+
+NUMCALLS=$($MYACC "select count(*) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and duration >0" )
+
+NUMCALLSOUT=$($MYACC "select count(*) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id!=0 and destination_account_id=0 and duration >0")
+
+NUMCALLSIN=$($MYACC "select count(*) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id=0 and destination_account_id!=0 and duration >0")
+
+NUMCALLSINT=$($MYACC "select count(*) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id!=0 and destination_account_id!=0 and duration > 0")
+
+MAX_CUENTAS_CALL_SALIENTES=$($MYACC "select source_account_id, source_external_contract_id, count(*) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id!=0 and duration >0  group by source_account_id order by count(*) desc limit 5")
+
+MAX_CUENTAS_CALL_ENTRANTES=$($MYACC "select destination_account_id, destination_external_contract_id,  count(*) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and destination_account_id!=0 and duration > 0 group by destination_account_id order by count(*) desc limit 5")
+
+MINUTOS_TOTALES=$($MYACC "select ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME")
+
+MINUTOS_ENTRANTES=$($MYACC "select ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id=0 and destination_account_id!=0")
+
+MINUTOS_SALIENTES=$($MYACC "select ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id!=0 and destination_account_id=0")
+
+MINUTOS_INTERNOS=$($MYACC "select ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id!=0 and destination_account_id!=0")
+
+MINUTOS_PELIGROSOS=$($MYACC "select ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id=0 and destination_account_id=0")
+
+MINUTOS_MOVILES=$($MYACC "select ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id!=0 and destination_account_id=0 and (destination_user like '346%' or destination_user like '347%' )")
+
+MINUTOS_FIJOS=$($MYACC "select ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id!=0 and destination_account_id=0 and (destination_user like '348%' or destination_user like '349%' )")
+
+MINUTOS_INTERNACIONAL=$($MYACC "select ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id!=0 and destination_account_id=0 and destination_user not like '34%' ")
+
+MAX_CUENTAS_SALIENTES=$($MYACC "select source_account_id, source_external_contract_id,  ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and source_account_id!=0 group by source_account_id order by sum(duration/60) desc limit 5")
+
+MAX_CUENTAS_ENTRANTES=$($MYACC "select destination_account_id, destination_external_contract_id,  ROUND(sum(duration/60)) from cdr where init_time > $UNIXINITTIME and init_time < $UNIXENDTIME and destination_account_id!=0 group by destination_account_id order by sum(duration/60) desc limit 5")
+
+
+
+mail -s "Pruebas de provider" "$DESTMAIL" <<EOF
+
+Estadísticas del Provider a día $HOY:
+
+Número de subscribers totales: $NUMSUBS
+Número de subscribers por dominio: 
+$NUMSUBSPERDOM
+
+Número de DIDs provisionados: $NUMDID
+Número de DIDs por dominio:
+$NUMDIDPERDOM
+
+Llamadas establecidas en el periodo $INIYEAR-$INIMONTH-01 - $ENDYEAR-$ENDMONTH-01:
+
+	Totales: $NUMCALLS
+	Salientes: $NUMCALLSOUT
+	Entrantes: $NUMCALLSIN
+	Internas: $NUMCALLSINT
+
+	Cuentas con mayor número de llamadas entrantes:
+$MAX_CUENTAS_CALL_ENTRANTES
+
+	Cuentas con mayor número de llamadas salientes 
+$MAX_CUENTAS_CALL_SALIENTES
+
+
+Minutos en el periodo $INIYEAR-$INIMONTH-01 - $ENDYEAR-$ENDMONTH-01:
+
+	Totales: $MINUTOS_TOTALES
+	Salientes: $MINUTOS_SALIENTES
+	Entrantes: $MINUTOS_ENTRANTES
+	Internos: $MINUTOS_INTERNOS
+	Peligrosos: $MINUTOS_PELIGROSOS
+
+	Salientes a móviles: $MINUTOS_MOVILES
+	Salientes a fijos: $MINUTOS_FIJOS
+	Salientes a internacional: $MINUTOS_INTERNACIONAL
+
+	Cuentas con mayor número de minutos salientes:
+$MAX_CUENTAS_SALIENTES
+
+	Cuentas con mayor número de minutos entrantes:
+$MAX_CUENTAS_ENTRANTES
+
+
+
+Atentamente, tu script de stats :)
+
+
+EOF
+
+
+exit 0

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+SRCPATH=/var/lib/rtpengine-recording
+OLDPATH=/var/lib/rtpengine-recording/old
+DSTPATH=/home/recorded-calls
+MONTH=$(date +%Y%m)
+DAY=$(date +%d)
+source /etc/mysql/sipwise.cnf
+MYCON="mysql -usipwise -p$SIPWISE_DB_PASSWORD accounting"
+
+mkdir -p $DSTPATH/$MONTH/$DAY
+mkdir -p $OLDPATH/$MONTH/$DAY
+
+pushd $SRCPATH > /dev/null
+for i in $(ls); 
+do 
+	CALLID=$(echo $i | rev | cut -d "-" -f3- |rev)
+	EXTENSION=$(echo $i | rev | cut -d "." -f1 |rev)
+
+	
+	$MYCON -N -e "select from_unixtime(start_time) +0,source_cli,destination_user_in,source_account_id,destination_account_id from cdr where call_id ='$CALLID'" | while read -r TIME CLI DST SRCACC DSTACC;
+	do
+		TIME=$(echo $TIME | cut -d '.' -f 1)
+
+		if [ $SRCACC = "0" ] ; then
+			DIRECTION="in"
+		elif [ $DSTACC = "0" ] ; then
+			DIRECTION="out"
+		else
+			DIRECTION="internal"
+		fi
+
+		NEWFILE=$DSTPATH/$MONTH/$DAY/$TIME"_"$CLI"_"$DST"_"$DIRECTION.$EXTENSION
+		cp "$i" "$NEWFILE"
+		mv $i "$OLDPATH/$MONTH/$DAY/"
+
+	done
+
+done
+popd > /dev/null
+

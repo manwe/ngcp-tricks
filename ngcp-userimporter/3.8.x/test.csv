@@ -1,0 +1,3 @@
+customer_id,user,domain,password,primary_number,mail,webuser,webpassword,externalid,permanent_contact,aliasnumbers,allowed_clis,E164_to_ruri,language,rewrite_rule_set,ncos,concurrent_max,concurrent_max_out
+9,User_1,192.168.2.41,pass,34 94 4103456,user@example.org,user1,webpass,txurro,sip:string@dominio_o_ip:puerto, 34 94 3434321|34 94 6543456|34 94 4024567, 34 94 3434321|34 94 6543456|34 94 4024568,Sí,es,pruebarewrite,1,3,6
+,User_2,192.168.2.41,pass,,,,webpass,,,,,,,,,,

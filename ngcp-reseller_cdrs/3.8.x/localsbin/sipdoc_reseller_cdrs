@@ -1,0 +1,52 @@
+#!/bin/bash
+
+ETCPATH="/usr/local/etc/sipdoc_reseller_cdrs"
+MYACC='mysql accounting -N -s -r -e'
+
+
+INIMONTH=$(date -d 'last month' +%m)
+ENDMONTH=$(date  +%m)
+
+if [ $INIMONTH == "12" ]; then
+        INIYEAR=$(date -d 'last year' +%Y)
+else
+        INIYEAR=$(date  +%Y)
+fi
+ENDYEAR=$(date  +%Y)
+
+UNIXINITTIME=$(date +%s -d "$INIYEAR-$INIMONTH-01 00:00:00")
+UNIXENDTIME=$(date +%s -d "$ENDYEAR-$ENDMONTH-01 00:00:00")
+HOY=$(date +%Y-%m-%d)
+LASTMONTH=$INIYEAR$INIMONTH
+FILEPATH='/var/lib/mysql-files'
+
+echo $LASTMONTH
+
+set -e
+
+rm -f $FILEPATH/*
+
+for reseller in $(ls $ETCPATH/*.conf); do
+
+  echo "encontrado $reseller en el path"
+  source $reseller
+
+
+
+ $MYACC " select 'Inicio', 'ID Cuenta Origen', 'Cuenta Origen', 'ID Subscriber Origen', 'Subscriber Origen', 'CLI', 'Anónimo', 'Destino', 'Duración', 'Coste reseller', 'Coste cliente' union all 
+
+select from_unixtime(start_time), source_account_id, source_external_contract_id, source_user_id, source_external_subscriber_id,
+    source_cli, source_clir, destination_user_in, duration, source_reseller_cost, source_customer_cost from cdr 
+    where source_provider_id = $RESELLERID and duration > 0 and start_time > $UNIXINITTIME and start_time < $UNIXENDTIME 
+  INTO OUTFILE '$FILEPATH/$RESELLERID.csv' FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' "  
+
+gzip --best $FILEPATH/$RESELLERID.csv
+
+
+
+echo "Adjuntamos los cdrs del mes $LASTMONTH " |mail -a $FILEPATH/$RESELLERID.csv.gz -s "CDR del mes $LASTMONTH" -c $MAILCC $MAILTO 
+
+rm -f $FILEPATH/$RESELLERID.csv.gz
+
+
+done
