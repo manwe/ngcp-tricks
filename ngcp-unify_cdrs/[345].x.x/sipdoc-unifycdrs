@@ -1,0 +1,26 @@
+#!/bin/bash
+
+
+ORIGPATHROOT=/home/jail/home/cdrexport/resellers
+YEARMONTH=$(date -d "yesterday" +%Y%m)
+YESTERDAY=$(date -d "yesterday" +%d)
+TODAY=$(date -d "now" +%Y%m%d)
+DSTPATHROOT=/home/jail/home/
+
+set -e
+
+RESELLERS=$(ls $DSTPATHROOT | grep -v "cdrexport")
+
+for reseller in $RESELLERS; do
+
+	pushd $ORIGPATHROOT/$reseller/$YEARMONTH/$YESTERDAY > /dev/null 2>&1
+
+	FILES=`ls *.cdr`
+	for i in $FILES;
+	do
+  		sed '1d;$d' $i >> sipprovider-$TODAY.cdr
+	done
+	mv sipprovider-$TODAY.cdr $DSTPATHROOT/$reseller/
+	popd > /dev/null 2>&1
+
+done
