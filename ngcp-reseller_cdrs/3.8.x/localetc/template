@@ -1,5 +1,5 @@
 NAME="Reseller demo"
 MAILTO="manwe@sipdoc.net"
-MAILCC="soporte@ubunet.es"
-RESELLERID=2
+MAILCC="soporte@carrier.com"
+CONTRACTID=45
 

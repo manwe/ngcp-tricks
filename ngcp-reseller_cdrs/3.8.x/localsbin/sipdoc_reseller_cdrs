@@ -24,7 +24,6 @@ echo $LASTMONTH
 
 set -e
 
-rm -f $FILEPATH/*
 
 for reseller in $(ls $ETCPATH/*.conf); do
 
@@ -37,16 +36,16 @@ for reseller in $(ls $ETCPATH/*.conf); do
 
 select from_unixtime(start_time), source_account_id, source_external_contract_id, source_user_id, source_external_subscriber_id,
     source_cli, source_clir, destination_user_in, duration, source_reseller_cost, source_customer_cost from cdr 
-    where source_provider_id = $RESELLERID and duration > 0 and start_time > $UNIXINITTIME and start_time < $UNIXENDTIME 
-  INTO OUTFILE '$FILEPATH/$RESELLERID.csv' FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' "  
+    where source_provider_id = $CONTRACTID and duration > 0 and start_time > $UNIXINITTIME and start_time < $UNIXENDTIME 
+  INTO OUTFILE '$FILEPATH/$CONTRACTID.csv' FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' "  
 
-gzip --best $FILEPATH/$RESELLERID.csv
+gzip --best $FILEPATH/$CONTRACTID.csv
 
 
 
-echo "Adjuntamos los cdrs del mes $LASTMONTH " |mail -a $FILEPATH/$RESELLERID.csv.gz -s "CDR del mes $LASTMONTH" -c $MAILCC $MAILTO 
+echo "Adjuntamos los cdrs del mes $LASTMONTH " |mail -a $FILEPATH/$CONTRACTID.csv.gz -s "CDR del mes $LASTMONTH" -c $MAILCC $MAILTO 
 
-rm -f $FILEPATH/$RESELLERID.csv.gz
+rm -f $FILEPATH/$CONTRACTID.csv.gz
 
 
 done
