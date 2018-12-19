@@ -1,0 +1,16 @@
+{
+    "name": "barnetik/sipwise-importer",
+    "require": {
+        "nategood/httpful": "^0.2.20",
+        "hackzilla/password-generator": "^1.1"
+    },
+    "authors": [
+        {
+            "name": "Alayn Gortazar",
+            "email": "alayn@barnetik.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {"Barnetik\\": "classes"}
+    }
+}

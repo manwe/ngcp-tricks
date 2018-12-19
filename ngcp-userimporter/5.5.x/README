@@ -1,0 +1,3 @@
+* Password: tiene que ser mayor a 6 caracteres
+* rewrite_rule_set: nombre de la rewrite rule
+* ncos: id del ncos (no permite buscar por nombre)
