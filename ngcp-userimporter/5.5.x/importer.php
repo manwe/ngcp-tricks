@@ -22,6 +22,7 @@ $line = 0;
 
 $fields = [
     'customer_id',
+    'acc_external',
     'username',
     'domain',
     'password',
@@ -29,7 +30,7 @@ $fields = [
     'email',
     'webusername',
     'webpassword',
-    'external_id',
+    'sub_external',
     'permanent_contact',
     'alias_numbers',
     'allowed_clis',

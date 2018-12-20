@@ -111,8 +111,12 @@ class SipWiseApi
             $sanitized['email'] = trim($subscriber['email']);
         }
 
-        if (trim($subscriber['external_id'])) {
-            $sanitized['external_id'] = trim($subscriber['external_id']);
+        if (trim($subscriber['acc_external'])) {
+            $sanitized['acc_external'] = trim($subscriber['acc_external']);
+        }
+
+        if (trim($subscriber['sub_external'])) {
+            $sanitized['external_id'] = trim($subscriber['sub_external']);
         }
 
         if (trim($subscriber['primary_number'])) {
@@ -184,7 +188,7 @@ class SipWiseApi
             };
             $sanitized['customer_id'] = $subscriber['customer_id'];
         } else {
-            $newCustomerId = $this->createNewCustomer($sanitized['external_id']);
+            $newCustomerId = $this->createNewCustomer($sanitized['acc_external']);
             if (false === $newCustomerId) {
                 throw new \Exception('ERROR: No customer id. New customer could not be created. Please specify Customer and Billing id\'s: ' . var_export($subscriber, true));
             }

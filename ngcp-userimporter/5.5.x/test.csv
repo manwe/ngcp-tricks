@@ -1,3 +1,3 @@
-customer_id,user,domain,password,primary_number,mail,webuser,webpassword,externalid,permanent_contact,aliasnumbers,allowed_clis,E164_to_ruri,language,rewrite_rule_set,ncos,concurrent_max,concurrent_max_out
-9,User_1,192.168.2.41,pass,34 94 4103456,user@example.org,user1,webpass,txurro,sip:string@dominio_o_ip:puerto, 34 94 3434321|34 94 6543456|34 94 4024567, 34 94 3434321|34 94 6543456|34 94 4024568,Sí,es,pruebarewrite,1,3,6
-,User_2,192.168.2.41,pass,,,,webpass,,,,,,,,,,
+customer_id,acc_external,user,domain,password,primary_number,mail,webuser,webpassword,sub_external,permanent_contact,aliasnumbers,allowed_clis,E164_to_ruri,language,rewrite_rule_set,ncos,concurrent_max,concurrent_max_out,allowed_ips
+,acc_externo_molon,User_1009,disoa.eu,pass,34 94 4103456,user@example.org,user1,webpass,txurro_externo,sip:string@dominio_o_ip:puerto, 34 94 3434321|34 94 6543456|34 94 4024567, 34 94 3434321|34 94 6543456|34 94 4024568,Sí,es,,,3,6,
+,cosa,User_2,disoa.eu,pass,,,,webpass,,,,,,,,,,,192.168.1.2|192.168.2.1
