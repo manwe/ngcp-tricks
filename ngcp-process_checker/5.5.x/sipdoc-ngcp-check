@@ -1,0 +1,203 @@
+#!/bin/bash
+
+set -e
+
+#####CONFIGURATION####
+
+#Defaults
+NGCP_VERSION=`cat /etc/ngcp_version`
+VERBOSE=0
+HOSTNAME=`hostname`
+SERVICE="/usr/sbin/service"
+
+SEND_MAIL=1
+LOG_SYSLOG=1
+HA=0
+MYSLAVE=0
+
+
+
+if [ $SEND_MAIL = 1 ] ; then
+	MAIL_CMD=`which mail`
+	MAIL_RCPT="manwe@sipdoc.net"
+	MAIL_SBJ="Sipdoc-NGCP process checker: Problem detected"
+fi
+
+
+if [ $LOG_SYSLOG = 1 ] ; then
+	LOG_CMD=`which logger`
+	LOG_PRIO="local0.info"
+	LOG_TAG="sipdoc-ngcp-checker"
+fi
+
+
+if [ $HA = 1 ] ; then
+	HA_MGM="keepalived"
+	if [ $HA_MGM = "pacemaker" ] ; then
+		PCMK_CMD=`which crm_resource`
+		PCMK_ADDR="FAILOVER-ADDR"
+		NODENAME=$HOSTNAME
+	elif [ $HA_MGM = "keepalived" ] ; then
+		KPLD_ADDR="201.174.87.133"		
+	fi
+fi
+
+
+####END CONFIGURATION####
+
+
+function verbose {
+	if [ $VERBOSE = 1 ] ; then
+		echo -e "$1"
+	fi
+
+	if [ $LOG_SYSLOG = 1 ] ; then
+		$LOG_CMD -p $LOG_PRIO -t $LOG_TAG "$1"
+	fi
+}
+
+function report {
+	if [ $SEND_MAIL = 1 ] ; then
+		echo "$1" | $MAIL_CMD -s "$MAIL_SBJ" "$MAIL_RCPT"
+	fi
+}
+
+function checkreplication {
+	SSQL=$(mysql -e "show slave status\G" | grep "Slave_SQL_Running" | cut -d ":" -f 2)
+	if [ $SSQL = "No" ] ; then
+		return 1
+	fi
+	ISQL=$(mysql -e "show slave status\G" | grep "Slave_IO_Running" | cut -d ":" -f 2)
+	if [ $ISQL = "No" ] ; then
+		return 1
+	fi
+	return 0
+}
+
+function checkactive {
+	if [ $HA_MGM = "pacemaker" ] ; then
+		OUT=`$PCMK_CMD --resource $PCMK_ADDR --locate`
+		if [[ $OUT =~ $NODENAME ]] ; then
+			verbose "This is active node"
+			return 0
+		else
+			verbose "This is standby node"
+			return 1
+		fi
+	elif [ $HA_MGM = "keepalived" ] ; then
+		ip addr | grep "$KPLD_ADDR" > /dev/null 2>&1
+		RET=$?
+		if [ $RET = 0 ] ; then
+			verbose "This is active node"
+			return 0
+		else
+			verbose "This is standby node"
+			return 1
+		fi
+	else
+		verbose "Can't identify resource management system. Exiting..."
+		report "Can't identify resource management system. Exiting..."
+		exit 1
+	fi
+}
+
+
+
+
+if [[ $NGCP_VERSION =~ ^mr5 ]] ; then
+	verbose "This is NGCP version 5.X"
+	CHECKUP="asterisk cron exim4 grafana-server influxdb irqbalance kamailio-lb mysql ngcp-panel ngcp-rtpengine-daemon  ngcp-witnessd nginx ntp redis-server rsyslog ssh telegraf "
+	CHECKDOWN="apache2"
+	CHECKACTIVE="kamailio-proxy mediator ngcp-sems ngcp-rate-o-mat"
+	CHECKIGNORE="prosody"
+else
+	verbose "Couldn't check NGCP version. Exiting..."
+	report "Couldn't check NGCP version. Exiting..."
+	exit 1
+fi
+
+
+if [ $MYSLAVE = 1 ] ; then
+	if checkreplication; then
+		verbose "Replication is working. That's good"
+	else
+		verbose "Replication is broken. Fix it!"
+		report "Replication is broken. Fix it!"
+	fi
+fi
+
+
+if [ $HA = 0 ] ; then
+	CHECKUP=$CHECKUP" "$CHECKACTIVE
+elif [ $HA = 1 ] ; then
+	if checkactive ; then
+		CHECKUP=$CHECKUP" "$CHECKACTIVE
+	else
+		CHECKDOWN=$CHECKDOWN" "$CHECKACTIVE
+	fi
+else
+	verbose "HA unknown value"
+	report "HA unknown value. Exiting..."
+	exit 1
+fi
+
+
+set +e
+for i in $CHECKUP; do
+	if [[ $i =~  $CHECKIGNORE ]] ; then
+		verbose "Not checking $i as it's ignored"
+	else
+        	$SERVICE $i status > /dev/null 2>&1
+        	RET=$?
+        	if [ $RET = 0 ] ; then
+                	verbose "Service $i is running. That's good."
+        	elif [ $RET = 3 ] ; then
+                	verbose "Service $i is stopped and should be running. Starting..."
+			$SERVICE $i start > /dev/null 2>&1
+			RET=$?
+			if [ $RET = 0 ] ; then
+				verbose "$i started :)"
+				report "Service $i was stopped and had to be restarted"
+			else
+				verbose "Failed to start $i"
+				report "Service $i was stopped and failed to start"
+			fi
+        	else
+                	verbose "Service $i is in unknown state"
+			report "Service $i should be started but it's in unknown state"
+        	fi
+	fi
+done
+
+
+for i in $CHECKDOWN; do
+        if [[ $i =~  $CHECKIGNORE ]] ; then
+                echo "Not checking $i as it's ignored"
+        else
+                $SERVICE $i status > /dev/null 2>&1
+                RET=$?
+                if [ $RET = 3 ] ; then
+                        verbose "Service $i is stopped. That's good."
+                elif [ $RET = 0 ] ; then
+                        verbose "Service $i is running and should be stopped. Stopping..."
+                        $SERVICE $i stop > /dev/null 2>&1
+                        RET=$?
+                        if [ $RET = 0 ] ; then
+                                verbose "$i stopped :)"
+				report "Service $i was started and had to be stopped"
+                        else
+                                verbose "Failed to stop $i"
+				report "Service $i was started and failed to stop"
+                        fi
+                else
+                        verbose "Service $i is in unknown state"
+			report "Service $i should be stopped and it's in unknown state"
+                fi
+        fi
+done
+
+
+set -e
+
+exit 0
+

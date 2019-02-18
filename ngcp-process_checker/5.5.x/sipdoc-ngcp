@@ -1,0 +1,1 @@
+*/10 * * * *   root  /usr/local/sbin/sipdoc-ngcp-check > /dev/null 2>&1
