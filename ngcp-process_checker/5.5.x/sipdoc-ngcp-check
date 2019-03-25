@@ -107,7 +107,7 @@ function checkactive {
 if [[ $NGCP_VERSION =~ ^mr5 ]] ; then
 	verbose "This is NGCP version 5.X"
 	CHECKUP="asterisk cron exim4 grafana-server influxdb irqbalance kamailio-lb mysql ngcp-panel ngcp-rtpengine-daemon  ngcp-witnessd nginx ntp redis-server rsyslog ssh telegraf "
-	CHECKDOWN="apache2"
+	CHECKDOWN=""
 	CHECKACTIVE="kamailio-proxy mediator ngcp-sems ngcp-rate-o-mat"
 	CHECKIGNORE="prosody"
 else
